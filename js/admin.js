@@ -277,107 +277,65 @@ function getDirectPdfUrl(filePath) {
 // 8. GENERATE INDIVIDUAL PDF QR CARD
 // --------------------------------------------
 
-function createQrCard(pdfDocument) {
-
-    const pdfUrl = getDirectPdfUrl(pdfDocument.file_path);
-
-
-    const card = document.createElement("div");
-
-    card.className = "qr-card";
-
-
-    // PDF title
-
-    const title = document.createElement("h3");
-
-    title.textContent =
-        pdfDocument.title || pdfDocument.file_name;
-
-
-    // PDF filename
-
-    const fileName = document.createElement("p");
-
-    fileName.className = "qr-file-name";
-
-    fileName.textContent = pdfDocument.file_name;
-
-
-    // QR container
-
-    const qrContainer = document.createElement("div");
-
-    qrContainer.className = "qr-image";
-
-
-    // Direct PDF link
-
-    const directLink = document.createElement("a");
-
-    directLink.href = pdfUrl;
-
-    directLink.target = "_blank";
-
-    directLink.rel = "noopener noreferrer";
-
-    directLink.textContent = "Open PDF directly";
-
-
-    // Download QR button
-
-    const downloadButton = document.createElement("button");
-
-    downloadButton.type = "button";
-
-    downloadButton.textContent = "Download QR PNG";
-
-
-    // Add elements
-
-    card.appendChild(title);
-
-    card.appendChild(fileName);
-
-    card.appendChild(qrContainer);
-
-    card.appendChild(directLink);
-
-    card.appendChild(downloadButton);
-
-
-    // Generate QR containing DIRECT PDF URL
-
-    new QRCode(qrContainer, {
-
-        text: pdfUrl,
-
-        width: 240,
-
-        height: 240,
-
-        colorDark: "#000000",
-
-        colorLight: "#ffffff",
-
-        correctLevel: QRCode.CorrectLevel.M
-
-    });
-
-
-    // Download QR
-
-    downloadButton.addEventListener("click", () => {
-
-        downloadQrImage(qrContainer, pdfDocument.file_name);
-
-    });
-
-
-    return card;
-
+function getEquipmentPageUrl(equipmentId) {
+    const baseUrl = new URL("./", window.location.href);
+    baseUrl.search = "";
+    baseUrl.hash = "";
+    baseUrl.searchParams.set("id", equipmentId);
+    return baseUrl.toString();
 }
 
+function createQrCard(pdfDocument, equipmentId, equipmentName) {
+    const pdfUrl = getDirectPdfUrl(pdfDocument.file_path);
+    const equipmentUrl = getEquipmentPageUrl(equipmentId);
+
+    const card = document.createElement("div");
+    card.className = "qr-card";
+
+    const title = document.createElement("h3");
+    title.textContent = equipmentName || "Equipment manual";
+
+    const fileName = document.createElement("p");
+    fileName.className = "qr-file-name";
+    fileName.textContent = pdfDocument.file_name || pdfDocument.title || "PDF manual";
+
+    const qrContainer = document.createElement("div");
+    qrContainer.className = "qr-image";
+
+    const portalLink = document.createElement("a");
+    portalLink.href = equipmentUrl;
+    portalLink.target = "_blank";
+    portalLink.rel = "noopener noreferrer";
+    portalLink.textContent = "Open equipment manual portal";
+
+    const pdfLink = document.createElement("a");
+    pdfLink.href = pdfUrl;
+    pdfLink.target = "_blank";
+    pdfLink.rel = "noopener noreferrer";
+    pdfLink.textContent = "Open PDF directly";
+
+    const downloadButton = document.createElement("button");
+    downloadButton.type = "button";
+    downloadButton.textContent = "Download QR PNG";
+
+    card.append(title, fileName, qrContainer, portalLink, pdfLink, downloadButton);
+
+    // The QR opens the equipment portal, not a raw storage URL.
+    new QRCode(qrContainer, {
+        text: equipmentUrl,
+        width: 240,
+        height: 240,
+        colorDark: "#102a43",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+    });
+
+    downloadButton.addEventListener("click", () => {
+        downloadQrImage(qrContainer, equipmentName || pdfDocument.file_name || "equipment");
+    });
+
+    return card;
+}
 
 // --------------------------------------------
 // 9. DOWNLOAD QR PNG
@@ -501,13 +459,11 @@ equipmentForm.addEventListener("submit", async (event) => {
 
         // Generate separate QR for each PDF
 
-        documents.forEach((pdfDocument) => {
-
+        if (documents.length) {
             qrResult.appendChild(
-                createQrCard(pdfDocument)
+                createQrCard(documents[0], equipment.id, equipment.name)
             );
-
-        });
+        }
 
 
         equipmentForm.reset();
@@ -638,47 +594,24 @@ async function loadEquipment() {
         } else {
 
             documents.forEach((pdfDocument) => {
-
                 const row = document.createElement("div");
-
                 row.className = "document-row";
 
-
                 const name = document.createElement("span");
-
                 name.textContent = pdfDocument.file_name;
-
-
-                const qrButton = document.createElement("button");
-
-                qrButton.type = "button";
-
-                qrButton.textContent = "Generate QR";
-
-
-                qrButton.addEventListener("click", () => {
-
-                    qrResult.innerHTML = "";
-
-                    qrResult.appendChild(
-                        createQrCard(pdfDocument)
-                    );
-
-                    qrResult.scrollIntoView({
-                        behavior: "smooth",
-                        block: "start"
-                    });
-
-                });
-
-
                 row.appendChild(name);
-
-                row.appendChild(qrButton);
-
                 documentsArea.appendChild(row);
-
             });
+
+            const qrButton = document.createElement("button");
+            qrButton.type = "button";
+            qrButton.textContent = "Generate equipment QR";
+            qrButton.addEventListener("click", () => {
+                qrResult.innerHTML = "";
+                qrResult.appendChild(createQrCard(documents[0], equipment.id, equipment.name));
+                qrResult.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+            documentsArea.appendChild(qrButton);
 
         }
 
@@ -740,17 +673,25 @@ async function addMorePdfs(equipmentId) {
             );
 
 
+            // Fetch equipment name for the QR card and portal link
+            const { data: equipment, error: equipmentError } = await supabaseClient
+                .from("equipment")
+                .select("id, name")
+                .eq("id", equipmentId)
+                .single();
+
+            if (equipmentError) throw equipmentError;
+            const equipmentName = equipment.name;
+
             // Generate QR for every new PDF
 
             qrResult.innerHTML = "";
 
-            documents.forEach((pdfDocument) => {
-
+            if (documents.length) {
                 qrResult.appendChild(
-                    createQrCard(pdfDocument)
+                    createQrCard(documents[0], equipmentId, equipmentName)
                 );
-
-            });
+            }
 
 
             showStatus(

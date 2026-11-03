@@ -1,183 +1,137 @@
-
+// Agappe customer documentation portal
 const loading = document.getElementById("loading");
+const homeSection = document.getElementById("homeSection");
 const errorSection = document.getElementById("errorSection");
 const errorMessage = document.getElementById("errorMessage");
+const errorTitle = document.getElementById("errorTitle");
+const equipmentSection = document.getElementById("equipmentSection");
+const documentList = document.getElementById("documentList");
 
-const equipmentSection =
-    document.getElementById("equipmentSection");
+document.getElementById("year").textContent = new Date().getFullYear();
 
-const documentList =
-    document.getElementById("documentList");
-
-
-// =====================================
-// SHOW ERROR
-// =====================================
-
-function showError(message) {
-
-    loading.hidden = true;
-    equipmentSection.hidden = true;
-    errorSection.hidden = false;
-
-    errorMessage.textContent = message;
+function showState(state) {
+  loading.hidden = state !== "loading";
+  homeSection.hidden = state !== "home";
+  errorSection.hidden = state !== "error";
+  equipmentSection.hidden = state !== "equipment";
 }
 
-
-// =====================================
-// LOAD EQUIPMENT
-// =====================================
+function showError(message, title = "Equipment not found") {
+  errorTitle.textContent = title;
+  errorMessage.textContent = message;
+  showState("error");
+}
 
 async function loadEquipmentPage() {
+  const equipmentId = new URLSearchParams(window.location.search).get("id");
 
-    try {
+  // Opening the base GitHub Pages URL is a valid home page, not an error.
+  if (!equipmentId) {
+    showState("home");
+    return;
+  }
 
-        // Get equipment ID from QR URL
-        const params = new URLSearchParams(
-            window.location.search
-        );
-
-        const equipmentId = params.get("id");
-
-        if (!equipmentId) {
-            throw new Error("Equipment ID is missing.");
-        }
-
-
-        // Get equipment information
-        const { data: equipment, error: equipmentError } =
-            await supabaseClient
-                .from("equipment")
-                .select("id, name")
-                .eq("id", equipmentId)
-                .maybeSingle();
-
-        if (equipmentError) throw equipmentError;
-
-        if (!equipment) {
-            throw new Error("Equipment not found.");
-        }
-
-
-        // Display equipment name
-        document.getElementById("equipmentName")
-            .textContent = equipment.name;
-
-        document.title = equipment.name + " - Manuals";
-
-
-        // Get PDF records
-        const { data: documents, error: documentError } =
-            await supabaseClient
-                .from("equipment_documents")
-                .select("id, title, file_name, file_path")
-                .eq("equipment_id", equipmentId)
-                .order("created_at", { ascending: false });
-
-        if (documentError) throw documentError;
-
-
-        // Display PDF manuals
-        displayDocuments(documents || []);
-
-        loading.hidden = true;
-        errorSection.hidden = true;
-        equipmentSection.hidden = false;
-
-    } catch (error) {
-
-        console.error(error);
-
-        showError(error.message);
-    }
-}
-
-
-// =====================================
-// DISPLAY PDF DOCUMENTS
-// =====================================
-
-function displayDocuments(documents) {
-
-    documentList.replaceChildren();
-
-    if (!documents.length) {
-
-        const message = document.createElement("p");
-
-        message.textContent =
-            "No PDF manuals are available for this equipment.";
-
-        documentList.appendChild(message);
-
-        return;
+  try {
+    if (!window.supabase || !window.supabase.createClient) {
+      throw new Error("The documentation service could not be initialized. Please try again later.");
     }
 
+    const { data: equipment, error: equipmentError } = await supabaseClient
+      .from("equipment")
+      .select("id, name")
+      .eq("id", equipmentId)
+      .maybeSingle();
 
-    documents.forEach(doc => {
+    if (equipmentError) throw equipmentError;
+    if (!equipment) {
+      showError("This QR code may be outdated, or the equipment record is not available.");
+      return;
+    }
 
-        const { data } = supabaseClient
-            .storage
-            .from(STORAGE_BUCKET)
-            .getPublicUrl(doc.file_path);
+    document.getElementById("equipmentName").textContent = equipment.name;
+    document.title = `${equipment.name} | Agappe Manuals`;
 
+    const { data: documents, error: documentError } = await supabaseClient
+      .from("equipment_documents")
+      .select("id, title, file_name, file_path, created_at")
+      .eq("equipment_id", equipmentId)
+      .order("created_at", { ascending: false });
 
-        // PDF card
-        const card = document.createElement("div");
-        card.className = "document-card";
+    if (documentError) throw documentError;
 
-
-        const icon = document.createElement("div");
-        icon.className = "pdf-icon";
-        icon.textContent = "PDF";
-
-
-        const details = document.createElement("div");
-        details.className = "document-details";
-
-
-        const title = document.createElement("h3");
-        title.textContent = doc.title;
-
-
-        const filename = document.createElement("p");
-        filename.textContent = doc.file_name;
-
-        details.append(title, filename);
-
-
-        // Buttons
-        const actions = document.createElement("div");
-        actions.className = "document-actions";
-
-
-        const viewButton = document.createElement("a");
-
-        viewButton.href = data.publicUrl;
-        viewButton.target = "_blank";
-        viewButton.rel = "noopener noreferrer";
-        viewButton.textContent = "View PDF";
-        viewButton.className = "view-btn";
-
-
-        const downloadButton = document.createElement("a");
-
-        downloadButton.href = data.publicUrl + "?download";
-        downloadButton.textContent = "Download PDF";
-        downloadButton.className = "download-btn";
-
-
-        actions.append(viewButton, downloadButton);
-
-        card.append(icon, details, actions);
-
-        documentList.appendChild(card);
-    });
+    renderDocuments(documents || []);
+    showState("equipment");
+  } catch (error) {
+    console.error("Documentation portal error:", error);
+    showError(error.message || "Unable to load the manuals. Please try again.", "Unable to load documentation");
+  }
 }
 
+function renderDocuments(documents) {
+  documentList.replaceChildren();
+  document.getElementById("documentCount").textContent =
+    `${documents.length} ${documents.length === 1 ? "DOCUMENT" : "DOCUMENTS"}`;
 
-// =====================================
-// START
-// =====================================
+  if (!documents.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-documents";
+    empty.textContent = "No PDF manuals are currently available for this equipment.";
+    documentList.appendChild(empty);
+    return;
+  }
+
+  documents.forEach((doc) => {
+    const { data, error } = supabaseClient.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(doc.file_path);
+
+    if (error || !data?.publicUrl) return;
+    const pdfUrl = data.publicUrl;
+
+    const card = document.createElement("article");
+    card.className = "document-card";
+
+    const icon = document.createElement("div");
+    icon.className = "pdf-icon";
+    icon.textContent = "PDF";
+
+    const details = document.createElement("div");
+    details.className = "document-details";
+
+    const title = document.createElement("h4");
+    title.textContent = doc.title || doc.file_name || "User manual";
+
+    const filename = document.createElement("p");
+    filename.textContent = doc.file_name || "PDF document";
+    details.append(title, filename);
+
+    const actions = document.createElement("div");
+    actions.className = "document-actions";
+
+    const view = document.createElement("a");
+    view.className = "view-btn";
+    view.href = pdfUrl;
+    view.target = "_blank";
+    view.rel = "noopener noreferrer";
+    view.textContent = "View manual";
+
+    const download = document.createElement("a");
+    download.className = "download-btn";
+    download.href = `${pdfUrl}${pdfUrl.includes("?") ? "&" : "?"}download`;
+    download.setAttribute("download", doc.file_name || "manual.pdf");
+    download.textContent = "Download";
+
+    actions.append(view, download);
+    card.append(icon, details, actions);
+    documentList.appendChild(card);
+  });
+
+  if (!documentList.children.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-documents";
+    empty.textContent = "The manuals could not be loaded. Please contact support.";
+    documentList.appendChild(empty);
+  }
+}
 
 loadEquipmentPage();
