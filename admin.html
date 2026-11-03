@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Equipment Admin Dashboard</title>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <header class="admin-header">
+        <h1>Medical Equipment Documentation</h1>
+        <p>Admin Dashboard</p>
+    </header>
+
+    <main class="admin-container">
+
+        <!-- ADMIN LOGIN -->
+        <section id="loginSection" class="admin-card">
+
+            <h2>Admin Login</h2>
+
+            <form id="loginForm">
+
+                <label for="email">Email</label>
+
+                <input
+                    type="email"
+                    id="email"
+                    placeholder="Admin email"
+                    required
+                >
+
+                <label for="password">Password</label>
+
+                <input
+                    type="password"
+                    id="password"
+                    placeholder="Password"
+                    required
+                >
+
+                <button type="submit">Login</button>
+
+            </form>
+
+            <p id="loginMessage"></p>
+
+        </section>
+
+
+        <!-- ADMIN DASHBOARD -->
+        <section id="dashboardSection" hidden>
+
+            <div class="dashboard-heading">
+
+                <div>
+                    <h2>Equipment Dashboard</h2>
+                    <p>Manage equipment and PDF manuals.</p>
+                </div>
+
+                <button id="logoutBtn" class="logout-btn">
+                    Logout
+                </button>
+
+            </div>
+
+
+            <!-- ADD EQUIPMENT -->
+            <section class="admin-card">
+
+                <h2>Add New Equipment</h2>
+
+                <form id="equipmentForm">
+
+                    <label for="equipmentName">
+                        Equipment Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="equipmentName"
+                        placeholder="Example: HX35"
+                        required
+                    >
+
+                    <label for="pdfFiles">
+                        Select PDF Manuals
+                    </label>
+
+                    <input
+                        type="file"
+                        id="pdfFiles"
+                        accept=".pdf,application/pdf"
+                        multiple
+                        required
+                    >
+
+                    <button type="submit" id="uploadBtn">
+                        Upload PDFs & Generate QR Codes
+                    </button>
+
+                </form>
+
+                <p id="statusMessage" class="status-message"></p>
+
+            </section>
+
+
+            <!-- QR RESULTS -->
+            <section class="admin-card">
+
+                <h2>Generated PDF QR Codes</h2>
+
+                <p class="section-description">
+                    Each QR code opens its corresponding PDF directly.
+                </p>
+
+                <div id="qrResult" class="qr-grid"></div>
+
+            </section>
+
+
+            <!-- EQUIPMENT LIST -->
+            <section class="admin-card">
+
+                <h2>Registered Equipment</h2>
+
+                <div id="equipmentList">
+                    Loading equipment...
+                </div>
+
+            </section>
+
+        </section>
+
+    </main>
+
+
+    <!-- SUPABASE -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- QR CODE GENERATOR -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+    <!-- CONFIGURATION -->
+    <script src="js/config.js"></script>
+
+    <!-- ADMIN LOGIC -->
+    <script src="js/admin.js"></script>
+
+</body>
+</html>

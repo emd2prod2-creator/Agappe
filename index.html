@@ -1,0 +1,65 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipment Manuals</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+    <h1>Medical Equipment Documentation</h1>
+    <p>Equipment Manuals & Support</p>
+</header>
+
+<main class="container">
+
+    <section id="loading" class="panel">
+        Loading equipment information...
+    </section>
+
+    <section id="errorSection" class="panel" hidden>
+        <h2>Equipment Not Found</h2>
+        <p id="errorMessage"></p>
+    </section>
+
+    <section id="equipmentSection" hidden>
+
+        <section class="panel">
+
+            <span class="section-label">
+                EQUIPMENT INFORMATION
+            </span>
+
+            <h2 id="equipmentName"></h2>
+
+        </section>
+
+        <section class="panel">
+
+            <span class="section-label">
+                DOCUMENT LIBRARY
+            </span>
+
+            <h2>Available PDF Manuals</h2>
+
+            <div id="documentList"></div>
+
+        </section>
+
+    </section>
+
+</main>
+
+<footer>
+    Medical Equipment Documentation Portal
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/public.js"></script>
+
+</body>
+</html>
